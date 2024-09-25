@@ -40,11 +40,21 @@ const gpio_num_t i2c_scl_pin = GPIO_NUM_21;
 #define I2C_FREQ_HZ 400000
 #define I2CDEV_TIMEOUT 1000
 
-#define GPIO_INPUT_IO GPIO_NUM_19
-#define GPIO_INPUT_PIN_SEL  1ULL<<GPIO_INPUT_IO
+#define GPIO_INPUT_IO_19 GPIO_NUM_19
+#define GPIO_INPUT_IO_18 GPIO_NUM_18
+#define GPIO_INPUT_IO_5  GPIO_NUM_5
+#define GPIO_INPUT_IO_34 GPIO_NUM_25
+#define GPIO_INPUT_IO_32 GPIO_NUM_32
+#define GPIO_INPUT_IO_33 GPIO_NUM_33
+#define GPIO_INPUT_PIN_SEL  ((1ULL<<GPIO_INPUT_IO_19) | (1ULL<<GPIO_INPUT_IO_18) | (1ULL<<GPIO_INPUT_IO_5) | (1ULL<<GPIO_INPUT_IO_34) | (1ULL<<GPIO_INPUT_IO_32) | (1ULL<<GPIO_INPUT_IO_33))
+
+#define GPIO_OUTPUT_IO GPIO_NUM_17
+#define GPIO_OUTPUT_PIN_SEL  1ULL<<GPIO_OUTPUT_IO
+
 #define ESP_INTR_FLAG_DEFAULT 0
 
 u8g2_t g_u8g2;
+bool toggle = false;
 
 static xQueueHandle gpio_evt_queue = NULL;
 
@@ -60,6 +70,8 @@ static void gpio_task_example(void* arg)
     for(;;) {
         if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
             printf("GPIO[%d] intr, val: %d\n", io_num, gpio_get_level((gpio_num_t)io_num));
+            toggle = !toggle;
+            gpio_set_level(GPIO_OUTPUT_IO, toggle);
         }
     }
 }
@@ -180,14 +192,26 @@ extern "C" void app_main(void)
     io_conf.intr_type = GPIO_INTR_POSEDGE;
     io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
     io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pull_up_en = (gpio_pullup_t)0;
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    gpio_config(&io_conf);
+
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pin_bit_mask = GPIO_OUTPUT_PIN_SEL;
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
     gpio_config(&io_conf);
 
     gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
     xTaskCreate(gpio_task_example, "gpio_task_example", 2048, NULL, 10, NULL);
 
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
-    gpio_isr_handler_add(GPIO_INPUT_IO, gpio_isr_handler, (void*) GPIO_INPUT_IO);
+    gpio_isr_handler_add(GPIO_INPUT_IO_19, gpio_isr_handler, (void *)GPIO_INPUT_IO_19);
+    gpio_isr_handler_add(GPIO_INPUT_IO_18, gpio_isr_handler, (void *)GPIO_INPUT_IO_18);
+    gpio_isr_handler_add(GPIO_INPUT_IO_5, gpio_isr_handler, (void *)GPIO_INPUT_IO_5);
+    gpio_isr_handler_add(GPIO_INPUT_IO_34, gpio_isr_handler, (void *)GPIO_INPUT_IO_34);
+    gpio_isr_handler_add(GPIO_INPUT_IO_32, gpio_isr_handler, (void *)GPIO_INPUT_IO_32);
+    gpio_isr_handler_add(GPIO_INPUT_IO_33, gpio_isr_handler, (void *)GPIO_INPUT_IO_33);
 
     i2c_dev_t dev;
     if (ds3231_init_desc(&dev, I2C_NUM_1, i2c_sda_pin, i2c_scl_pin) != ESP_OK)
