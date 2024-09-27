@@ -56,7 +56,7 @@ const gpio_num_t i2c_scl_pin = GPIO_NUM_21;
 u8g2_t g_u8g2;
 bool toggle = false;
 
-static xQueueHandle gpio_evt_queue = NULL;
+static QueueHandle_t gpio_evt_queue = NULL;
 
 static void IRAM_ATTR gpio_isr_handler(void* arg)
 {
@@ -69,7 +69,7 @@ static void gpio_task_example(void* arg)
     uint32_t io_num;
     for(;;) {
         if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-            printf("GPIO[%d] intr, val: %d\n", io_num, gpio_get_level((gpio_num_t)io_num));
+            printf("GPIO[%ld] intr, val: %d\n", io_num, gpio_get_level((gpio_num_t)io_num));
             toggle = !toggle;
             gpio_set_level(GPIO_OUTPUT_IO, toggle);
         }
@@ -141,19 +141,19 @@ esp_err_t ds3231_get_time(i2c_dev_t *dev, struct tm *time)
 	return ESP_OK;
 }
 
-void init_i2c() {
-    i2c_config_t conf;
-    memset(&conf, 0, sizeof(i2c_config_t));
-    conf.mode = I2C_MODE_MASTER;
-    conf.sda_io_num = i2c_sda_pin;
-    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.scl_io_num = i2c_scl_pin;
-    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+// void init_i2c() {
+//     i2c_config_t conf;
+//     memset(&conf, 0, sizeof(i2c_config_t));
+//     conf.mode = I2C_MODE_MASTER;
+//     conf.sda_io_num = i2c_sda_pin;
+//     conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+//     conf.scl_io_num = i2c_scl_pin;
+//     conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
 
-    conf.master.clk_speed = I2C_FREQ_HZ;
-    ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_1, &conf));
-    ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_1, conf.mode, 0, 0, 0));
-}
+//     conf.master.clk_speed = I2C_FREQ_HZ;
+//     ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_1, &conf));
+//     ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_1, conf.mode, 0, 0, 0));
+// }
 
 esp_err_t i2c_dev_init(i2c_port_t port, int sda, int scl)
 {
@@ -225,9 +225,8 @@ extern "C" void app_main(void)
     // init_i2c();
     u8g2_t *u8g2 = &g_u8g2;
 
-    memset(u8g2, 0, sizeof(u8g2_t)); // Must zero-initialize the u8g2 struct, causes bugs otherwise
+    memset(u8g2, 0, sizeof(u8g2_t));
 
-    // fixme: i2c needs to be initialized earlier; it's used for the battery charger and gas gauge also
     u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
     u8g2_esp32_hal.sda = U8G2_ESP32_HAL_UNDEFINED;
     u8g2_esp32_hal.scl = U8G2_ESP32_HAL_UNDEFINED;
@@ -263,7 +262,7 @@ extern "C" void app_main(void)
         rtcinfo_str = rtcinfo_to_string(rtcinfo);
         
         u8g2_ClearBuffer(u8g2);
-        u8g2_DrawStr(u8g2, 3, 23, "Madonna Electronics");
+        u8g2_DrawStr(u8g2, 3, 23, "Electronics");
         u8g2_DrawStr(u8g2, 3, 50, rtcinfo_str.c_str());
         u8g2_SendBuffer(u8g2);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
